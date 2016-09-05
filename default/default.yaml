@@ -1,41 +1,25 @@
 ---
 # This Flow describes what forjj will need to do with plugins
-name: "pull_request"
-title: "Implement Pull request flow model, with origin and upstream repositories."
+title: "Basic GIT flow with one GIT upstream remote"
 define: # Collection of plugin types
   upstream:
     # roles: # Array of upstream role name to assign to each upstream instances. by default, the role is upstream.
     # - "upstream"
     max_instances: 1 # Max number of upstream services a repo configured in Pull Request flow can accept.
-    min_instances: 1 # Min number of upstream services a repo configured in Pull Request flow can accept.
   ci:
     max_instances: 1 # Max number of ci services a repo configured in Pull Request flow can accept.
-
-flow: # All actions executed are ordered and executed one by one. If one step is failing forjj exit. But some task at least ensure it to exists as requested.
-  create: # Actions to do to create flow elements. We assume forjj has already do simple local work ie, local git repo exist and connected to the upstream repo.
-  - git: ["checkout", "master"]
-  - git: ["reset", "--hard", "HEAD"]
-  - git: ["clean"]
-  - git: ["fetch", "origin"]
-  - git: ["pull"]
-  - instance: ["upstream", "fork", "{{ .Repo.Name }}"] # Call the instance role task called "fork". Forj task details is described under apps/upstream(role)/<instance_type>/fork
-  - git: ["remote", "rename", "origin", "upstream"]
-  - git: ["remote", "add", "origin", "{{ .Instances.upstream.Repo.{{ .Repo.Name }}.Remotes.origin }}"]
-  - git: ["fetch", "origin"]
-  - instance: ["upstream", "ci_update"] # Call the instance role task called "ci_update". Forj task details is described under apps/upstream(role)/<instance_type>/ci_update
-  - instance: ["ci", "create_webhook"] # Call the instance role task called "create_webhook". Forj task details is described under apps/ci(role)/<instance_type>/create_webhook
-  - instance: ["ci", "create_jobs"] # Call the instance role task called "ci_update". Forj task details is described under apps/ci(role)/<instance_type>/ci_update
-  # Nothing real to do.
+flow:
+  create: # Actions to do to create flow elements. Assume local git repo exist connected to the upstream repo.
+  - instance: ["upstream", "ci_update"]
+  - instance: ["ci", "create_webhook"]
+  - instance: ["ci", "create_jobs"]
   start: # Actions to do to start a new work (forjj create or update)
   - git: ["checkout", "-b", "{{ .Branch }}"]
   - git: ["push", "-u", "origin", "{{ .Branch }}"]
   close: # Actions to do to close a forjj task.
   - git: ["push"]
-  - post: ["remove_task", "When your pull request is approved and merged, you should cleanup your task with forjj flow remove_task {{ .Branch }}"]
-  remove_task: # This action is suggested after a close.
   - git: ["checkout", "master"]
-  - git: ["push", "--delete", "{{ .[0] }}"]
-  - git: ["branch", "-D", "{{ .[0] }}"]
+  - git: ["branch", "-D", "{{ .Branch }}"]
   maintain: # Action to do to
   - git: ["checkout", "master"]
   - git: ["reset", "--hard", "HEAD"]
@@ -45,15 +29,6 @@ flow: # All actions executed are ordered and executed one by one. If one step is
 apps: # Collection of Role/PluginType that is used to apply flow task.
   upstream:
     github: # If this app is attached to the repo. do the following: Forjj has set the template context to get github and apps information.
-      fork:
-        commit: "Create a fork of {{ .Params.0 }}"
-        do:
-        - api:
-            action: "fork" # Will ask for a fork
-            repo: "{{ .Params.0 }}"
-            remotes: # Github driver interpret 'github' to execute a template on the github answer (.Result) Conform to https://godoc.org/github.com/google/go-github/github#Repository
-              origin: "github:.Result.SSHURL"
-              upstream: "github:.Result.Parent.SSHURL"
       ci_update:
         commit: "Add github features to jenkins {{ .Apps.Jenkins.Name }}"
         do:
