@@ -26,37 +26,46 @@ flow:
   - git: ["clean"]
   - git: ["pull"]
 
-apps: # Collection of Role/PluginType that is used to apply flow task.
-  upstream:
-    github: # If this app is attached to the repo. do the following: Forjj has set the template context to get github and apps information.
-      ci_update:
-        commit: "Add github features to jenkins {{ .Apps.Jenkins.Name }}"
-        do:
-        - apps:
-            ci/jenkins: # If the CI instance is jenkins, forjj will communicate with forjj jenkins plugin API to do the following:
-              action: "add_features"
-              features:
-              - "plugin:github:1.18.2"
-              - "feature:ghprb"
-  ci: # If this app is attached to the repo. do the following: Forjj has set the template context to get jenkins and apps information.
-    jenkins:
-      create_webhook:
-        commit: "Create Github webhook to the jenkins instance."
-        do:
-        - apps:
-            upstream/github: # Communicate with this plugin having role 'upstream' and send following as payload.
-              action: "webhook"
-              url: "{{ .App.JenkinsProto}}://{{ .App.JenkinsAddr }}{{ if .App.JenkinsPort}}:{{.App.JenkinsPort}}{{ end }}/"
-      create_jobs:
-        commit: "Create Pull Request jenkins jobs through groovy jobdsl"
-        do:
-        - api:
-            action: "job"
-            name: "{{ .Repo.Name }}_PR"
-            file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/pull_request.groovy"
-            template: "templates/PR/pull_request.groovy" # The template is copied to the infra repo and then used.
-        - api:
-            action: "job"
-            name: "{{ .Repo.Name }}_Release"
-            file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/release.groovy"
-            template: "templates/PR/release.groovy"
+forjfile: # On top of loaded Forjfile:
+  do: # do the following:
+    jenkins-update-for-github: # update the list of features
+      description: Set jenkins features for Github
+      on: repos # loop on repositories condition is true. => .Current = <Repo object>
+      # Set if we found the repo attached to an upstream/github and attached to a ci/jenkins
+      if_found: |
+        {{ if .Current.Apps.upstream.Driver 'github' }}\
+        {{ $CI := Range .Current.Apps.ci }}{{ if $CI.Driver 'jenkins')) }}
+        found
+        {{ end }}{{ end }}
+      set: # Set object features with:
+        features:
+          plugin:github:1.18.2: {}
+          feature:ghprb : {}
+    create-github-webhook-to-jenkins:
+      decription: Define the jenkins webhook
+      on: apps # Looping on all Repositories
+      if:
+        # The repo is attached to an upstream/github
+        - "{{ if .Current.Apps.upstream.Driver 'github' }} 1 {{ end }}"
+        # and is attached to a ci/jenkins
+        - "{{ $CI := Range .Current.Apps.ci }}{{ if $CI.Driver 'jenkins')) }} 1 {{ end }}"
+      set: # map[string]map[string]<string|[]string>
+        webhooks: # set a webhook in loaded Forjfile to jenkins server
+          "jenkins-{{ .Current.Upstream.Github.Name }}":
+            url: "{{ .App.JenkinsProto}}://{{ .App.JenkinsAddr }}{{ if .App.JenkinsPort}}:{{.App.JenkinsPort}}{{ end }}/"
+            events: pull_request,push
+            repos: "{{ .MatchRepos.Join ',' }}"
+            app: "{{ .Current.Name }}"
+    create-seedjobs:
+      description: Set project
+      on-each: repos # Set for each repos => .Current = <Repo object>
+      if:
+        - upstream/github # If the repo is attached to an upstream/github
+        - ci/jenkins      # and attached to ci/jenkins
+      set:
+        projects:
+          "{{ .Current.Name }}":
+            remote-type:       "{{ .Current.RemoteType }}"
+            github-api-url:    "{{ .Current.UpstreamAPIUrl }}"
+            github-repo-owner: "{{ .Current.Owner }}"
+            github-repo:       "{{ .Current.Name }}"

@@ -43,45 +43,44 @@ flow: # All actions executed are ordered and executed one by one. If one step is
   - git: ["pull"]
 
 apps: # Collection of Role/PluginType that is used to apply flow task.
-  upstream:
-    github: # If this app is attached to the repo. do the following: Forjj has set the template context to get github and apps information.
-      fork:
-        commit: "Create a fork of {{ .Params.0 }}"
-        do:
-        - api:
-            action: "fork" # Will ask for a fork
-            repo: "{{ .Params.0 }}"
-            remotes: # Github driver interpret 'github' to execute a template on the github answer (.Result) Conform to https://godoc.org/github.com/google/go-github/github#Repository
-              origin: "github:.Result.SSHURL"
-              upstream: "github:.Result.Parent.SSHURL"
-      ci_update:
-        commit: "Add github features to jenkins {{ .Apps.Jenkins.Name }}"
-        do:
-        - apps:
-            ci/jenkins: # If the CI instance is jenkins, forjj will communicate with forjj jenkins plugin API to do the following:
-              action: "add_features"
-              features:
-              - "plugin:github:1.18.2"
-              - "feature:ghprb"
-  ci: # If this app is attached to the repo. do the following: Forjj has set the template context to get jenkins and apps information.
-    jenkins:
-      create_webhook:
-        commit: "Create Github webhook to the jenkins instance."
-        do:
-        - apps:
-            upstream/github: # Communicate with this plugin having role 'upstream' and send following as payload.
-              action: "webhook"
-              url: "{{ .App.JenkinsProto}}://{{ .App.JenkinsAddr }}{{ if .App.JenkinsPort}}:{{.App.JenkinsPort}}{{ end }}/"
-      create_jobs:
-        commit: "Create Pull Request jenkins jobs through groovy jobdsl"
-        do:
-        - api:
-            action: "job"
-            name: "{{ .Repo.Name }}_PR"
-            file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/pull_request.groovy"
-            template: "templates/PR/pull_request.groovy" # The template is copied to the infra repo and then used.
-        - api:
-            action: "job"
-            name: "{{ .Repo.Name }}_Release"
-            file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/release.groovy"
-            template: "templates/PR/release.groovy"
+  upstream/github: # If this app is defined in Forjfile.
+    # do the following: Forjj has set the template context to get github and apps information.
+    fork:
+      commit: "Create a fork of {{ .Params.0 }}"
+      do:
+      - api:
+          action: "fork" # Will ask for a fork
+          repo: "{{ .Params.0 }}"
+          remotes: # Github driver interpret 'github' to execute a template on the github answer (.Result) Conform to https://godoc.org/github.com/google/go-github/github#Repository
+            origin: "github:.Result.SSHURL"
+            upstream: "github:.Result.Parent.SSHURL"
+    ci_update:
+      commit: "Add github features to jenkins {{ .Apps.Jenkins.Name }}"
+      do:
+      - apps:
+          ci/jenkins: # If the CI instance is jenkins, forjj will communicate with forjj jenkins plugin API to do the following:
+            action: "add_features"
+            features:
+            - "plugin:github:1.18.2"
+            - "feature:ghprb"
+  ci/jenkins: # If this app is attached to the repo. do the following: Forjj has set the template context to get jenkins and apps information.
+    create_webhook:
+      commit: "Create Github webhook to the jenkins instance."
+      do:
+      - apps:
+          upstream/github: # Communicate with this plugin having role 'upstream' and send following as payload.
+            action: "webhook"
+            url: "{{ .App.JenkinsProto}}://{{ .App.JenkinsAddr }}{{ if .App.JenkinsPort}}:{{.App.JenkinsPort}}{{ end }}/"
+    create_jobs:
+      commit: "Create Pull Request jenkins jobs through groovy jobdsl"
+      do:
+      - api:
+          action: "job"
+          name: "{{ .Repo.Name }}_PR"
+          file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/pull_request.groovy"
+          template: "templates/PR/pull_request.groovy" # The template is copied to the infra repo and then used.
+      - api:
+          action: "job"
+          name: "{{ .Repo.Name }}_Release"
+          file: "{{ .App.JobsPath }}/{{ .Repo.Name }}/release.groovy"
+          template: "templates/PR/release.groovy"
