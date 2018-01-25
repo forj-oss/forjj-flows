@@ -26,46 +26,60 @@ flow:
   - git: ["clean"]
   - git: ["pull"]
 
-forjfile: # On top of loaded Forjfile:
-  do: # do the following:
-    jenkins-update-for-github: # update the list of features
-      description: Set jenkins features for Github
-      on: repos # loop on repositories condition is true. => .Current = <Repo object>
-      # Set if we found the repo attached to an upstream/github and attached to a ci/jenkins
-      if_found: |
-        {{ if .Current.Apps.upstream.Driver 'github' }}\
-        {{ $CI := Range .Current.Apps.ci }}{{ if $CI.Driver 'jenkins')) }}
+on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
+  # ----------------
+  jenkins-update-for-github: # update the list of features
+    description: Set jenkins features for Github
+    # Set if we found the repo attached to an upstream/github and attached to a ci/jenkins
+    if:
+      - rule: "{{ if .Current.HasApps 'driver:github'  }}true{{ end }}"
+      - rule: "{{ if .Current.HasApps 'driver:jenkins' }}true{{ end }}"
+    set: # Set object features with: map[string]map[string]<string|[]string>
+      features:
+        plugin:github:1.18.2: {}
+        feature:ghprb : {}
+
+  # ----------------
+  create-github-webhook-to-jenkins:
+    description: Define the jenkins webhook
+    if:
+      - rule: "{{ if .Current.HasApps 'driver:github'  }}true{{ end }}"
+      - rule: "{{ if .Current.HasApps 'driver:jenkins' }}true{{ end }}"
+    loop-on-list:
+      - name: jenkins
+        list: GetApps
+        parameters:
+          - 'driver:jenkins'
+      - name: github
+        list: GetApps
+        parameters:
+          - 'driver:github'
+    set:
+      webhooks: # set a webhook in loaded Forjfile to jenkins server
+        "{{ .List.jenkins.Name }}-{{ .List.github.Name }}":
+          url: "http{{ if .List.jenkins.SslCertificate }}s{{end}}://{{ .List.jenkins.DeployServiceAddr }}{{ if .List.jenkins.DeployServicePort }}:{{.List.jenkins.DeployServicePort}}{{ end }}/github-webhook/"
+          events: pull_request,push
+          repos: |
+            {{ $HOOK := .List.jenkins.Name + '-' + .List.github.Name }}\
+            {{ if .Forjfile.Webhooks.$HOOK.Repos }}{{.Forjfile.Webhooks.$HOOK.Repos}},{{ .Current.Name }}\
+            {{ else }}\
+            {{ .Current.Name }}\
+            {{ end }}
+          app: "{{ .List.github.Name }}"
+
+  # ----------------
+  create-seedjobs:
+    description: Set project
+    if_each: # if_each will test each and execute the `set` for each object instances.
+      filter: |
+        {{ if .Current.repos.Apps.upstream.Driver 'github' }}\
+        {{ $CI := Range .Current.repos.Apps.ci }}{{ if $CI.Driver 'jenkins')) }}\
         found
-        {{ end }}{{ end }}
-      set: # Set object features with:
-        features:
-          plugin:github:1.18.2: {}
-          feature:ghprb : {}
-    create-github-webhook-to-jenkins:
-      decription: Define the jenkins webhook
-      on: apps # Looping on all Repositories
-      if:
-        # The repo is attached to an upstream/github
-        - "{{ if .Current.Apps.upstream.Driver 'github' }} 1 {{ end }}"
-        # and is attached to a ci/jenkins
-        - "{{ $CI := Range .Current.Apps.ci }}{{ if $CI.Driver 'jenkins')) }} 1 {{ end }}"
-      set: # map[string]map[string]<string|[]string>
-        webhooks: # set a webhook in loaded Forjfile to jenkins server
-          "jenkins-{{ .Current.Upstream.Github.Name }}":
-            url: "{{ .App.JenkinsProto}}://{{ .App.JenkinsAddr }}{{ if .App.JenkinsPort}}:{{.App.JenkinsPort}}{{ end }}/"
-            events: pull_request,push
-            repos: "{{ .MatchRepos.Join ',' }}"
-            app: "{{ .Current.Name }}"
-    create-seedjobs:
-      description: Set project
-      on-each: repos # Set for each repos => .Current = <Repo object>
-      if:
-        - upstream/github # If the repo is attached to an upstream/github
-        - ci/jenkins      # and attached to ci/jenkins
-      set:
-        projects:
-          "{{ .Current.Name }}":
-            remote-type:       "{{ .Current.RemoteType }}"
-            github-api-url:    "{{ .Current.UpstreamAPIUrl }}"
-            github-repo-owner: "{{ .Current.Owner }}"
-            github-repo:       "{{ .Current.Name }}"
+        {{ end }}{{ end }}\
+    set: # map[string]map[string]<string|[]string>
+      projects:
+        "{{ .Current.Name }}":
+          remote-type:       "{{ .Current.RemoteType }}"
+          github-api-url:    "{{ .Current.UpstreamAPIUrl }}"
+          github-repo-owner: "{{ .Current.Owner }}"
+          github-repo:       "{{ .Current.Name }}"
