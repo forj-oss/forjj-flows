@@ -26,6 +26,17 @@ flow:
   - git: ["clean"]
   - git: ["pull"]
 
+on-forjfile-do: # On top of loaded Forjfile
+  # ----------------
+  set-default-ci:
+    description: "Set 'jenkins' application name as default for all repositories."
+    if:
+      - rule: '{{ if .Forjfile.HasApps "driver:jenkins" "name:jenkins" }}'
+    set:
+      forj-settings:
+        default-repo-apps:
+          ci: jenkins
+
 on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
   # ----------------
   jenkins-update-for-github: # update the list of features
@@ -44,7 +55,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
     description: Define the jenkins webhook
     if:
       - rule: '{{ if .Current.HasApps "driver:github"  }}true{{ end }}'
-      - rule: '"{{ if .Current.HasApps "driver:jenkins" }}true{{ end }}"'
+      - rule: '{{ if .Current.HasApps "driver:jenkins" }}true{{ end }}'
     loop-on-list:
       - name: jenkins
         list: GetApps
@@ -70,13 +81,9 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
   # ----------------
   create-seedjobs:
     description: Set project
-    if_each: # if_each will test each and execute the `set` for each object instances.
-      filter: |
-        {{ if .Current.repos.Apps.upstream.Driver "github" }}\
-        {{ $CI := Range .Current.repos.Apps.ci }}{{ if $CI.Driver "jenkins")) }}\
-        found
-        {{ end }}{{ end }}\
-    set: # map[string]map[string]<string|[]string>
+    if: # if_each will test each and execute the `set` for each object instances.
+      - rule: '{{ if .Current.HasApps "driver:github" }}true{{ end }}'
+    set:
       projects:
         '{{ .Current.Name }}':
           remote-type:       '{{ .Current.RemoteType }}'
