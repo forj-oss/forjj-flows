@@ -26,12 +26,12 @@ flow:
   - git: ["clean"]
   - git: ["pull"]
 
-on-forjfile-do: # On top of loaded Forjfile
+on-forjfile-do: # On top of loaded Forjfile (.Current is not set)
   # ----------------
   set-default-ci:
-    description: "Set 'jenkins' application name as default for all repositories."
+    description: "Set 'jenkins' application name as default for all repositories"
     if:
-      - rule: '{{ if .Forjfile.HasApps "driver:jenkins" "name:jenkins" }}'
+      - rule: '{{ if .Forjfile.HasApps "driver:jenkins" "name:jenkins" }}true{{ end }}'
     set:
       forj-settings:
         default-repo-apps:
