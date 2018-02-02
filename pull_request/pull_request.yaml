@@ -62,9 +62,9 @@ flow: # All actions executed are ordered and executed one by one. If one step is
       - cmd:
           git: ["push"]
       - forj:
-          info: "Call remove-work-branch", "When your pull request is approved and merged, you should cleanup your task with forjj flow remove_task {{ .Branch }}"
+          info: "Call 'forjj work-cleanup' when your pull request is approved and merged. It will remove your work branch called {{ .Branch }}"
 
-  remove-work-branch: # This action is suggested after a close.
+  work-cleanup: # This action is suggested after a close.
     help: "Cleanup old work branch."
     tasks:
       - cmd:
