@@ -67,15 +67,21 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
           - "driver:github"
     set:
       webhooks: # set a webhook in loaded Forjfile to jenkins server
-        "{{ .List.jenkins.Name }}-{{ .List.github.Name }}":
-          url: 'http{{ if .List.jenkins.Get "ssl-certificate" }}s{{end}}://{{ .List.jenkins.Get "deploy-service-addr" }}{{ if .List.jenkins.Get "deploy-service-port" }}:{{.List.jenkins.Get "deploy-service-port"}}{{ end }}/github-webhook/'
+        '{{ .List.jenkins.Get "name" }}-{{ .List.github.Get "name" }}':
+          url: |
+            {{/* Protocol setup   */}}http{{ if .List.jenkins.Get "ssl-certificate" }}s{{end}}://\
+            {{/* ServerName setup */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
+            {{/* ServerPort setup */}}{{ if .List.jenkins.Get "deploy-service-port" }}:{{.List.jenkins.Get "deploy-service-port"}}{{ end }}\
+            /github-webhook/\
           events: pull_request,push
           repos: |
-            {{ $HOOK := .List.jenkins.Get "name" + "-" + .List.github.Get "name" }}\
-            {{ if .Forjfile.Webhooks.$HOOK.Repos }}{{.Forjfile.Webhooks.$HOOK.Repos}},{{ .Repo.Get "name" }}\
+            {{ $HOOK := (concatenate (.List.jenkins.Get "name") "-" (.List.github.Get "name")) }}\
+            {{ $EXISTING_REPOS := .Forjfile.Get "webhooks" $HOOK "repos" }}\
+            {{ if $EXISTING_REPOS }}\
+            {{    $EXISTING_REPOS }},{{ .Repo.Get "name" }}\
             {{ else }}\
-            {{ .Repo.Get "name" }}\
-            {{ end }}
+            {{    .Repo.Get "name" }}\
+            {{ end }}\
           app: '{{ .List.github.Get "name" }}'
 
   # ----------------
@@ -85,8 +91,4 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
       - rule: '{{ if .Repo.HasApps "driver:github" }}true{{ end }}'
     set:
       projects:
-        '{{ .Repo.Get "name" }}':
-          remote-type:       '{{ .Repo.Get "remote-type" }}'
-          github-api-url:    '{{ .Repo.Get "upstream-API-url" }}'
-          github-repo-owner: '{{ .Repo.Get "owner" }}'
-          github-repo:       '{{ .Repo.Get "name" }}'
+        '{{ .Repo.Get "name" }}': {}
