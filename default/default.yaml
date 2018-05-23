@@ -69,9 +69,14 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
       webhooks: # set a webhook in loaded Forjfile to jenkins server
         '{{ .List.jenkins.Get "name" }}-{{ .List.github.Get "name" }}':
           url: |
-            {{/* Protocol setup   */}}http{{ if .List.jenkins.Get "ssl-certificate" }}s{{end}}://\
-            {{/* ServerName setup */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
-            {{/* ServerPort setup */}}{{ if .List.jenkins.Get "deploy-service-port" }}:{{.List.jenkins.Get "deploy-service-port"}}{{ end }}\
+            {{/* Protocol setup         */}}http{{ if not (eq (.List.jenkins.Get "ssl-method") "none") }}s{{end}}://\
+            {{/* ServerName setup       */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
+            {{ $PORT := (.List.jenkins.Get "deploy-service-port") }}\
+            {{ if eq (.List.jenkins.Get "ssl-method") "none" }}\
+            {{/* http ServerPort setup  */}}{{ if (and (not (eq $PORT "80")) $PORT)  }}:{{ $PORT }}{{ end }}\
+            {{ else }}\
+            {{/* https ServerPort setup */}}{{ if (and (not (eq $PORT "443")) $PORT) }}:{{ $PORT }}{{ end }}\
+            {{ end }}\
             /github-webhook/\
           events: pull_request,push
           repos: |
