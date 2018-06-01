@@ -121,7 +121,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
     if:
       - rule: '{{ if .Repo.HasApps "driver:github"  }}true{{ end }}'
       - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
-      - rule: '{{ if or (eq (.Repo.Get "role") "code") (and (not (eq (.Repo.Get "role") "code")) (eq (.Forjfile.Application.Get "pro-deployment") "true")) }}true{{ end }}'
+      - rule: '{{ if or (eq .Repo.Role "code") (and (not (eq (.Repo.Get "role") "code")) (eq (.Forjfile.Application.Get "pro-deployment") "true")) }}true{{ end }}'
     loop-on-list:
       - name: jenkins
         list: GetApps
@@ -160,6 +160,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
     description: Set project
     if: # if_each will test each and execute the `set` for each object instances.
       - rule: '{{ if .Repo.HasApps "driver:github" }}true{{ end }}'
+      - rule: '{{ if or (not (eq .Repo.Role "deploy")) .Repo.IsCurrentDeploy }}true{{ end }}'
     set:
       projects:
         '{{ .Repo.Get "name" }}': {}
