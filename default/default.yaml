@@ -95,7 +95,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
     description: Set project
     if: # if_each will test each and execute the `set` for each object instances.
       - rule: '{{ if .Repo.HasApps "driver:github" }}true{{ end }}'
-      - rule: '{{ if or (not (eq .Repo.Role "deploy")) .Repo.IsCurrentDeploy }}true{{ end }}'
+      - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
     set:
       projects:
         '{{ .Repo.Get "name" }}': {}
