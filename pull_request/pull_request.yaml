@@ -155,6 +155,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
             {{    .Repo.Get "name" }}\
             {{ end }}\
           app: '{{ .List.github.Get "name" }}'
+          ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
 
   # ----------------
   create-seedjobs:
