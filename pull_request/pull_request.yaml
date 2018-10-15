@@ -113,10 +113,21 @@ on-forjfile-do: # On top of loaded Forjfile (.Repo is not set)
       features:
         plugin:github: {}
 
+  # ----------------
+  jenkins-update-for-bitbucket: # update the list of features
+    description: Set jenkins features for bitbucket
+    # Set if we found the repo attached to an upstream/github and attached to a ci/jenkins
+    if:
+      - rule: '{{ if .Forjfile.HasApps "driver:bitbucket"  }}true{{ end }}'
+      - rule: '{{ if .Forjfile.HasApps "driver:jenkins" }}true{{ end }}'
+    set: # Set object features with: map[string]map[string]<string|[]string>
+      features:
+        plugin:bitbucket: {}
+
 on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
   # ----------------
   create-github-webhook-to-jenkins:
-    description: Define the jenkins webhook
+    description: Define the jenkins webhook for github
     if:
       - rule: '{{ if .Repo.HasApps "driver:github"  }}true{{ end }}'
       - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
@@ -157,11 +168,54 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
           app: '{{ .List.github.Get "name" }}'
           ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
 
+
+  create-bitbucket-webhook-to-jenkins:
+    description: Define the jenkins webhook for bitbucket
+    if:
+      - rule: '{{ if .Repo.HasApps "driver:bitbucket"  }}true{{ end }}'
+      - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
+      - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
+      - rule: '{{ if not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost") }}true{{ end }}'
+
+    loop-on-list:
+      - name: jenkins
+        list: GetApps
+        parameters:
+          - "driver:jenkins"
+      - name: bitbucket
+        list: GetApps
+        parameters:
+          - "driver:bitbucket"
+    set:
+      webhooks: # set a webhook in loaded Forjfile to jenkins server
+        '{{ .List.jenkins.Get "name" }}-{{ .List.bitbucket.Get "name" }}':
+          url: |
+            {{/* Protocol setup         */}}http{{ if not (eq (.List.jenkins.Get "ssl-method") "none") }}s{{end}}://\
+            {{/* ServerName setup       */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
+            {{ $PORT := (.List.jenkins.Get "deploy-service-port") }}\
+            {{ if eq (.List.jenkins.Get "ssl-method") "none" }}\
+            {{/* http ServerPort setup  */}}{{ if (and (not (eq $PORT "80")) $PORT)  }}:{{ $PORT }}{{ end }}\
+            {{ else }}\
+            {{/* https ServerPort setup */}}{{ if (and (not (eq $PORT "443")) $PORT) }}:{{ $PORT }}{{ end }}\
+            {{ end }}\
+            /bitbucket-hook/\
+          events: pull_request,push
+          repos: |
+            {{ $HOOK := (concatenate (.List.jenkins.Get "name") "-" (.List.bitbucket.Get "name")) }}\
+            {{ $EXISTING_REPOS := .Forjfile.Get "webhooks" $HOOK "repos" }}\
+            {{ if $EXISTING_REPOS }}\
+            {{    $EXISTING_REPOS }},{{ .Repo.Get "name" }}\
+            {{ else }}\
+            {{    .Repo.Get "name" }}\
+            {{ end }}\
+          app: '{{ .List.bitbucket.Get "name" }}'
+          ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
+
   # ----------------
   create-seedjobs:
-    description: Set project
+    description: Set jenkins project
     if: # if_each will test each and execute the `set` for each object instances.
-      - rule: '{{ if .Repo.HasApps "driver:github" }}true{{ end }}'
+      - rule: '{{ if or (.Repo.HasApps "driver:github" (.Repo.HasApps "driver:bitbucket") }}true{{ end }}'
       - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
     set:
       projects:
