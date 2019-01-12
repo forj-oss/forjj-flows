@@ -78,7 +78,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
       - rule: '{{ if .Repo.HasApps "driver:github"  }}true{{ end }}'
       - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
       - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
-      - rule: '{{ if not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost") }}true{{ end }}'
+      - rule: '{{ if or (not (.Repo.HasApps "driver:jenkins" "deploy-public-service-url:")) (not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost")) }}true{{ end }}'
     loop-on-list:
       - name: jenkins
         list: GetApps
@@ -123,7 +123,7 @@ create-bitbucket-webhook-to-jenkins:
     - rule: '{{ if .Repo.HasApps "driver:bitbucket"  }}true{{ end }}'
     - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
     - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
-    - rule: '{{ if not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost") }}true{{ end }}'
+    - rule: '{{ if or (not (.Repo.HasApps "driver:jenkins" "deploy-public-service-url:")) (not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost")) }}true{{ end }}'
 
   loop-on-list:
     - name: jenkins
@@ -165,7 +165,7 @@ create-bitbucket-webhook-to-jenkins:
       - rule: '{{ if .Repo.HasApps "driver:gitlab"  }}true{{ end }}'
       - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
       - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
-      - rule: '{{ if not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost") }}true{{ end }}'
+      - rule: '{{ if or (not (.Repo.HasApps "driver:jenkins" "deploy-public-service-url:")) (not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost")) }}true{{ end }}'
 
     loop-on-list:
       - name: jenkins
