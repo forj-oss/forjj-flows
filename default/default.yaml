@@ -117,47 +117,47 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
           app: '{{ .List.github.Get "name" }}'
           ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
 
-create-bitbucket-webhook-to-jenkins:
-  description: Define the jenkins webhook for bitbucket
-  if:
-    - rule: '{{ if .Repo.HasApps "driver:bitbucket"  }}true{{ end }}'
-    - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
-    - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
-    - rule: '{{ if or (not (.Repo.HasApps "driver:jenkins" "deploy-public-service-url:")) (not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost")) }}true{{ end }}'
+  create-bitbucket-webhook-to-jenkins:
+    description: Define the jenkins webhook for bitbucket
+    if:
+      - rule: '{{ if .Repo.HasApps "driver:bitbucket"  }}true{{ end }}'
+      - rule: '{{ if .Repo.HasApps "driver:jenkins" }}true{{ end }}'
+      - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
+      - rule: '{{ if or (not (.Repo.HasApps "driver:jenkins" "deploy-public-service-url:")) (not (.Repo.HasApps "driver:jenkins" "deploy-service-addr:localhost")) }}true{{ end }}'
 
-  loop-on-list:
-    - name: jenkins
-      list: GetApps
-      parameters:
-        - "driver:jenkins"
-    - name: bitbucket
-      list: GetApps
-      parameters:
-        - "driver:bitbucket"
-  set:
-    webhooks: # set a webhook in loaded Forjfile to jenkins server
-      '{{ .List.jenkins.Get "name" }}-{{ .List.bitbucket.Get "name" }}':
-        url: |
-          {{/* Protocol setup         */}}http{{ if not (eq (.List.jenkins.Get "ssl-method") "none") }}s{{end}}://\
-          {{/* ServerName setup       */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
-          {{ $PORT := (.List.jenkins.Get "deploy-service-port") }}\
-          {{ if eq (.List.jenkins.Get "ssl-method") "none" }}\
-          {{/* http ServerPort setup  */}}{{ if (and (not (eq $PORT "80")) $PORT)  }}:{{ $PORT }}{{ end }}\
-          {{ else }}\
-          {{/* https ServerPort setup */}}{{ if (and (not (eq $PORT "443")) $PORT) }}:{{ $PORT }}{{ end }}\
-          {{ end }}\
-          /bitbucket-hook/\
-        events: pull_request,push
-        repos: |
-          {{ $HOOK := (concatenate (.List.jenkins.Get "name") "-" (.List.bitbucket.Get "name")) }}\
-          {{ $EXISTING_REPOS := .Forjfile.Get "webhooks" $HOOK "repos" }}\
-          {{ if $EXISTING_REPOS }}\
-          {{    $EXISTING_REPOS }},{{ .Repo.Get "name" }}\
-          {{ else }}\
-          {{    .Repo.Get "name" }}\
-          {{ end }}\
-        app: '{{ .List.bitbucket.Get "name" }}'
-        ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
+    loop-on-list:
+      - name: jenkins
+        list: GetApps
+        parameters:
+          - "driver:jenkins"
+      - name: bitbucket
+        list: GetApps
+        parameters:
+          - "driver:bitbucket"
+    set:
+      webhooks: # set a webhook in loaded Forjfile to jenkins server
+        '{{ .List.jenkins.Get "name" }}-{{ .List.bitbucket.Get "name" }}':
+          url: |
+            {{/* Protocol setup         */}}http{{ if not (eq (.List.jenkins.Get "ssl-method") "none") }}s{{end}}://\
+            {{/* ServerName setup       */}}{{ .List.jenkins.Get "deploy-service-addr" }}\
+            {{ $PORT := (.List.jenkins.Get "deploy-service-port") }}\
+            {{ if eq (.List.jenkins.Get "ssl-method") "none" }}\
+            {{/* http ServerPort setup  */}}{{ if (and (not (eq $PORT "80")) $PORT)  }}:{{ $PORT }}{{ end }}\
+            {{ else }}\
+            {{/* https ServerPort setup */}}{{ if (and (not (eq $PORT "443")) $PORT) }}:{{ $PORT }}{{ end }}\
+            {{ end }}\
+            /bitbucket-hook/\
+          events: pull_request,push
+          repos: |
+            {{ $HOOK := (concatenate (.List.jenkins.Get "name") "-" (.List.bitbucket.Get "name")) }}\
+            {{ $EXISTING_REPOS := .Forjfile.Get "webhooks" $HOOK "repos" }}\
+            {{ if $EXISTING_REPOS }}\
+            {{    $EXISTING_REPOS }},{{ .Repo.Get "name" }}\
+            {{ else }}\
+            {{    .Repo.Get "name" }}\
+            {{ end }}\
+          app: '{{ .List.bitbucket.Get "name" }}'
+          ssl-check: '{{ .Forjfile.Get "app" (.List.jenkins.Get "name") "github-webhook-ssl-check" }}'
 
   create-gitlab-webhook-to-jenkins:
     description: Define the jenkins webhook for gitlab
