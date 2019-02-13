@@ -271,7 +271,7 @@ on-repo-do: # On top of loaded Forjfile for a specific Repo given by Forjj:
   create-seedjobs:
     description: Set project
     if: # if_each will test each and execute the `set` for each object instances.
-      - rule: '{{ if .Repo.HasApps "driver:github" }}true{{ end }}'
+      - rule: '{{ if or (or (.Repo.HasApps "driver:github") (.Repo.HasApps "driver:gitlab")) (.Repo.HasApps "driver:bitbucket") }}true{{ end }}'
       - rule: '{{ if .Repo.IsDeployable }}true{{ end }}'
     set:
       projects:
